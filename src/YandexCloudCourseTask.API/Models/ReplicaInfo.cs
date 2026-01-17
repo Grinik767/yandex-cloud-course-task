@@ -1,3 +1,3 @@
 ﻿namespace YandexCloudCourseTask.API.Models;
 
-public record ReplicaInfo(string BackendVersion, Guid InstanceId);
+public record ReplicaInfo(string BackendVersion, Guid ReplicaId);

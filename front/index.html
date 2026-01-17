@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDB Guestbook</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #111827;
+            margin-bottom: 1.5rem;
+        }
+
+        .system-card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            border-left: 5px solid var(--primary);
+        }
+
+        .system-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .system-item:last-child { margin-bottom: 0; }
+        .badge {
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .input-group {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        button {
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: #1d4ed8; }
+        button:active { transform: scale(0.98); }
+
+        .message-card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 6px;
+        }
+
+        .username {
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .date {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .content {
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-light);
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📒 Гостевая книга</h1>
+
+    <div class="system-card">
+        <div class="system-item">
+            <span>Frontend:</span>
+            <span class="badge" id="front-ver">${FRONT_VERSION}</span>
+        </div>
+        <div class="system-item">
+            <span>Backend:</span>
+            <span class="badge" id="back-ver">loading...</span>
+        </div>
+        <div class="system-item">
+            <span>Replica ID:</span>
+            <span class="badge" id="back-replica">...</span>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="username-input" placeholder="Ваше имя (обязательно)" maxlength="50">
+        <input type="text" id="msg-input" placeholder="Напишите сообщение..." maxlength="200">
+        <button onclick="sendMessage()">Отправить</button>
+    </div>
+
+    <div id="messages">
+    </div>
+</div>
+
+<script>
+    const CURRENT_VERSION = document.getElementById('front-ver').innerText;
+    if (CURRENT_VERSION.includes("FRONT_VERSION")) {
+        document.getElementById('front-ver').innerText = "dev-local";
+    }
+
+    async function loadInfo() {
+        try {
+            const res = await fetch('/api/initial-state');
+            if (!res.ok) throw new Error('Network error');
+            const data = await res.json();
+            document.getElementById('back-ver').innerText = data.version;
+            document.getElementById('back-replica').innerText = data.replicaId; 
+        } catch (e) {
+            console.error(e);
+            document.getElementById('back-ver').innerText = "Offline";
+        }
+    }
+
+    async function loadMessages() {
+        try {
+            const res = await fetch('/api/messages');
+            if (!res.ok) throw new Error('Failed to load');
+            const msgs = await res.json();
+
+            const container = document.getElementById('messages');
+            container.innerHTML = '';
+
+            if (msgs.length === 0) {
+                container.innerHTML = '<div class="empty-state">Сообщений пока нет. Будьте первыми!</div>';
+                return;
+            }
+
+            msgs.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'message-card';
+
+                const dateObj = new Date(m.createdAt);
+                const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                div.innerHTML = `
+                        <div class="message-header">
+                            <span class="username">${escapeHtml(m.username)}</span>
+                            <span class="date">${dateStr}</span>
+                        </div>
+                        <div class="content">${escapeHtml(m.content)}</div>
+                    `;
+                container.appendChild(div);
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function sendMessage() {
+        const userInput = document.getElementById('username-input');
+        const msgInput = document.getElementById('msg-input');
+
+        const user = userInput.value.trim();
+        const text = msgInput.value.trim();
+
+        if(!user || !text) {
+            alert("Пожалуйста, заполните имя и сообщение");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/messages', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: user, content: text })
+            });
+
+            if (res.ok) {
+                msgInput.value = '';
+                loadInfo();
+                loadMessages();
+            } else {
+                alert('Ошибка при отправке');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Не удалось отправить сообщение');
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return "";
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    loadInfo();
+    loadMessages();
+</script>
+</body>
+</html>
