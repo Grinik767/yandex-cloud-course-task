@@ -178,7 +178,7 @@
             const res = await fetch('/api/initial-state');
             if (!res.ok) throw new Error('Network error');
             const data = await res.json();
-            document.getElementById('back-ver').innerText = data.version;
+            document.getElementById('back-ver').innerText = data.backendVersion;
             document.getElementById('back-replica').innerText = data.replicaId; 
         } catch (e) {
             console.error(e);

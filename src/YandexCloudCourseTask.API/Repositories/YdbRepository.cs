@@ -16,8 +16,8 @@ public class YdbRepository : IAsyncDisposable
         var metadataProvider = new MetadataProvider();
 
         var driverConfig = new DriverConfig(
-            endpoint: configuration["YDB_ENDPOINT"] ?? string.Empty,
-            database: configuration["YDB_DATABASE"] ?? string.Empty,
+            endpoint: configuration["DB_ENDPOINT"] ?? string.Empty,
+            database: configuration["DB_NAME"] ?? string.Empty,
             credentials: metadataProvider
         );
 
@@ -45,6 +45,7 @@ public class YdbRepository : IAsyncDisposable
         {
             await _tableClient.SessionExec(async session =>
                 await session.ExecuteSchemeQuery(query));
+            Console.WriteLine("Schema created successfully.");
         }
         catch (Exception ex)
         {
