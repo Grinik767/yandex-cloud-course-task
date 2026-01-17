@@ -13,9 +13,10 @@ var app = builder.Build();
 var repository = app.Services.GetRequiredService<YdbRepository>();
 await repository.Initialize();
 
-if (builder.Configuration.GetValue<string>("RUN_MIGRATIONS") == "true")
+if (args.Contains("--migrate"))
 {
     await repository.CreateSchema();
+    return;
 }
 
 app.MapControllers();
