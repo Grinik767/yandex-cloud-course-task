@@ -37,7 +37,9 @@ public class YdbRepository : IAsyncDisposable
                 username Utf8,
                 content Utf8,
                 created_at Timestamp,
-                PRIMARY KEY (id)
+                PRIMARY KEY (id),
+                                  
+            INDEX idx_created_at GLOBAL ON (created_at)
             );
             """;
 
